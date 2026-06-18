@@ -1,223 +1,79 @@
 import streamlit as st
 
-# =========================
-# CẤU HÌNH TRANG
-# =========================
-st.set_page_config(
-    page_title="Tính Thuế TNCN",
-    page_icon="💰",
-    layout="wide"
-)
+st.set_page_config(page_title="Tính Thuế TNCN", layout="wide")
 
-# =========================
-# TIÊU ĐỀ
-# =========================
-st.title("💰 CHƯƠNG TRÌNH TÍNH THUẾ THU NHẬP CÁ NHÂN")
+st.title("Hệ thống tính Thuế Thu nhập cá nhân")
 
-st.write("Nhập đầy đủ thông tin để tính thuế TNCN.")
+st.info("Mẫu khung ứng dụng Streamlit: tính thuế tháng, quyết toán năm, so sánh hoàn/nộp bổ sung. Cần rà soát lại các thông số pháp lý trước khi sử dụng thực tế.")
 
-# =========================
-# HẰNG SỐ
-# =========================
-GIAM_TRU_BAN_THAN = 15_500_000
-GIAM_TRU_NPT = 6_200_000
+GTBT_THANG = 15_500_000
+GTNPT_THANG = 6_200_000
 
-# =========================
-# NHẬP THÔNG TIN
-# =========================
-st.subheader("📌 Thu nhập")
+def tax_monthly(income):
+    if income <= 0:
+        return 0
+    brackets = [
+        (10_000_000, 0.05),
+        (30_000_000, 0.10),
+        (60_000_000, 0.20),
+        (100_000_000, 0.30),
+        (float("inf"), 0.35),
+    ]
+    tax = 0
+    lower = 0
+    for upper, rate in brackets:
+        if income > upper:
+            tax += (upper - lower) * rate
+            lower = upper
+        else:
+            tax += (income - lower) * rate
+            break
+    return tax
 
-col1, col2 = st.columns(2)
+tab1, tab2, tab3 = st.tabs(["Thuế tháng", "Quyết toán năm", "Kết quả"])
 
-with col1:
-    luong = st.number_input(
-        "Lương cơ bản",
-        min_value=0.0,
-        value=15000000.0,
-        step=100000.0
+with tab1:
+    salary = st.number_input("Lương + phụ cấp tháng", min_value=0.0, value=20000000.0)
+    dependents = st.number_input("Số người phụ thuộc", min_value=0, step=1)
+    insurance = st.number_input("Bảo hiểm tháng", min_value=0.0, value=0.0)
+
+    taxable_month = max(
+        salary - insurance - GTBT_THANG - dependents * GTNPT_THANG,
+        0
     )
 
-    thuong = st.number_input(
-        "Tiền thưởng",
-        min_value=0.0,
-        value=0.0,
-        step=100000.0
+    monthly_tax = tax_monthly(taxable_month)
+
+    st.metric("Thu nhập tính thuế tháng", f"{taxable_month:,.0f}")
+    st.metric("Thuế tạm khấu trừ tháng", f"{monthly_tax:,.0f}")
+
+with tab2:
+    annual_income = st.number_input("Tổng thu nhập năm", min_value=0.0, value=240000000.0)
+    bonus = st.number_input("Thưởng cuối năm", min_value=0.0, value=0.0)
+    annual_insurance = st.number_input("Bảo hiểm cả năm", min_value=0.0, value=0.0)
+
+    annual_taxable = max(
+        annual_income + bonus
+        - annual_insurance
+        - GTBT_THANG * 12
+        - dependents * GTNPT_THANG * 12,
+        0
     )
 
-    phu_cap = st.number_input(
-        "Tổng phụ cấp chịu thuế",
-        min_value=0.0,
-        value=0.0,
-        step=100000.0
-    )
+    annual_tax = tax_monthly(annual_taxable / 12) * 12
 
-with col2:
-    tien_thue_nha = st.number_input(
-        "Tiền thuê nhà công ty trả hộ",
-        min_value=0.0,
-        value=0.0,
-        step=100000.0
-    )
+with tab3:
+    withheld = monthly_tax * 12
+    diff = annual_tax - withheld
 
-    thu_nhap_mien_thue = st.number_input(
-        "Khoản miễn thuế",
-        min_value=0.0,
-        value=0.0,
-        step=100000.0
-    )
+    st.metric("Thuế đã khấu trừ trong năm", f"{withheld:,.0f}")
+    st.metric("Thuế quyết toán năm", f"{annual_tax:,.0f}")
+    st.metric("Chênh lệch", f"{diff:,.0f}")
 
-st.subheader("📌 Bảo hiểm")
-
-col3, col4, col5 = st.columns(3)
-
-with col3:
-    bhxh = st.number_input(
-        "BHXH",
-        min_value=0.0,
-        value=0.0
-    )
-
-with col4:
-    bhyt = st.number_input(
-        "BHYT",
-        min_value=0.0,
-        value=0.0
-    )
-
-with col5:
-    bhtn = st.number_input(
-        "BHTN",
-        min_value=0.0,
-        value=0.0
-    )
-
-st.subheader("📌 Giảm trừ")
-
-so_npt = st.number_input(
-    "Số người phụ thuộc",
-    min_value=0,
-    value=0,
-    step=1
-)
-
-tu_thien = st.number_input(
-    "Khoản từ thiện được khấu trừ",
-    min_value=0.0,
-    value=0.0
-)
-
-# =========================
-# NÚT TÍNH
-# =========================
-if st.button("📊 TÍNH THUẾ"):
-
-    # Thu nhập trước tiền thuê nhà
-    thu_nhap_tam = (
-        luong
-        + thuong
-        + phu_cap
-        - thu_nhap_mien_thue
-    )
-
-    # Giới hạn tiền thuê nhà 15%
-    gioi_han_nha = thu_nhap_tam * 0.15
-
-    tien_nha_tinh_thue = min(
-        tien_thue_nha,
-        gioi_han_nha
-    )
-
-    # Thu nhập chịu thuế
-    thu_nhap_chiu_thue = (
-        thu_nhap_tam
-        + tien_nha_tinh_thue
-    )
-
-    # Bảo hiểm
-    tong_bao_hiem = (
-        bhxh
-        + bhyt
-        + bhtn
-    )
-
-    # Giảm trừ gia cảnh
-    giam_tru = (
-        GIAM_TRU_BAN_THAN
-        + so_npt * GIAM_TRU_NPT
-    )
-
-    # Thu nhập tính thuế
-    thu_nhap_tinh_thue = (
-        thu_nhap_chiu_thue
-        - tong_bao_hiem
-        - giam_tru
-        - tu_thien
-    )
-
-    if thu_nhap_tinh_thue <= 0:
-
-        st.success("Không phát sinh thuế TNCN")
-
+    if diff > 0:
+        st.error(f"Nộp bổ sung: {diff:,.0f} đồng")
+    elif diff < 0:
+        st.success(f"Được hoàn thuế: {abs(diff):,.0f} đồng")
     else:
+        st.info("Không phát sinh chênh lệch")
 
-        bac_thue = [
-            (5000000, 0.05),
-            (10000000, 0.10),
-            (18000000, 0.15),
-            (32000000, 0.20),
-            (52000000, 0.25),
-            (80000000, 0.30),
-            (float("inf"), 0.35)
-        ]
-
-        thue = 0
-        con_lai = thu_nhap_tinh_thue
-        moc_duoi = 0
-
-        for gioi_han, ty_le in bac_thue:
-
-            muc = min(
-                con_lai,
-                gioi_han - moc_duoi
-            )
-
-            if muc <= 0:
-                break
-
-            thue += muc * ty_le
-
-            con_lai -= muc
-            moc_duoi = gioi_han
-
-        luong_thuc_nhan = (
-            thu_nhap_chiu_thue
-            - tong_bao_hiem
-            - thue
-        )
-
-        st.subheader("📋 KẾT QUẢ")
-
-        st.metric(
-            "Thu nhập chịu thuế",
-            f"{thu_nhap_chiu_thue:,.0f} VNĐ"
-        )
-
-        st.metric(
-            "Thu nhập tính thuế",
-            f"{thu_nhap_tinh_thue:,.0f} VNĐ"
-        )
-
-        st.metric(
-            "Thuế TNCN phải nộp",
-            f"{thue:,.0f} VNĐ"
-        )
-
-        st.metric(
-            "Lương thực nhận",
-            f"{luong_thuc_nhan:,.0f} VNĐ"
-        )
-
-        st.info(
-            f"Giảm trừ bản thân: {GIAM_TRU_BAN_THAN:,.0f} VNĐ | "
-            f"Người phụ thuộc: {so_npt} người"
-        )
