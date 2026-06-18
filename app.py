@@ -221,4 +221,3 @@ if st.button("📊 TÍNH THUẾ"):
             f"Giảm trừ bản thân: {GIAM_TRU_BAN_THAN:,.0f} VNĐ | "
             f"Người phụ thuộc: {so_npt} người"
         )
-```
