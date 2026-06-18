@@ -1,74 +1,72 @@
-```python
 import streamlit as st
 
+# =========================
+# CẤU HÌNH TRANG
+# =========================
 st.set_page_config(
     page_title="Tính Thuế TNCN",
     page_icon="💰",
     layout="wide"
 )
 
-st.title("💰 Chương Trình Tính Thuế Thu Nhập Cá Nhân")
+# =========================
+# TIÊU ĐỀ
+# =========================
+st.title("💰 CHƯƠNG TRÌNH TÍNH THUẾ THU NHẬP CÁ NHÂN")
 
-# ======================
+st.write("Nhập đầy đủ thông tin để tính thuế TNCN.")
+
+# =========================
 # HẰNG SỐ
-# ======================
-
+# =========================
 GIAM_TRU_BAN_THAN = 15_500_000
-GIAM_TRU_NGUOI_PHU_THUOC = 6_200_000
+GIAM_TRU_NPT = 6_200_000
 
-# ======================
-# NHẬP DỮ LIỆU
-# ======================
-
-st.header("Thông tin thu nhập")
+# =========================
+# NHẬP THÔNG TIN
+# =========================
+st.subheader("📌 Thu nhập")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    luong_co_ban = st.number_input(
-        "Lương cơ bản (VNĐ)",
+    luong = st.number_input(
+        "Lương cơ bản",
         min_value=0.0,
-        value=15000000.0
+        value=15000000.0,
+        step=100000.0
     )
 
     thuong = st.number_input(
-        "Tiền thưởng (VNĐ)",
+        "Tiền thưởng",
         min_value=0.0,
-        value=0.0
+        value=0.0,
+        step=100000.0
     )
 
-    phu_cap_chuc_vu = st.number_input(
-        "Phụ cấp chức vụ",
+    phu_cap = st.number_input(
+        "Tổng phụ cấp chịu thuế",
         min_value=0.0,
-        value=0.0
-    )
-
-    phu_cap_trach_nhiem = st.number_input(
-        "Phụ cấp trách nhiệm",
-        min_value=0.0,
-        value=0.0
+        value=0.0,
+        step=100000.0
     )
 
 with col2:
-    phu_cap_dien_thoai = st.number_input(
-        "Phụ cấp điện thoại",
-        min_value=0.0,
-        value=0.0
-    )
-
-    phu_cap_xang_xe = st.number_input(
-        "Phụ cấp xăng xe",
-        min_value=0.0,
-        value=0.0
-    )
-
     tien_thue_nha = st.number_input(
         "Tiền thuê nhà công ty trả hộ",
         min_value=0.0,
-        value=0.0
+        value=0.0,
+        step=100000.0
     )
 
-st.header("Bảo hiểm")
+    thu_nhap_mien_thue = st.number_input(
+        "Khoản miễn thuế",
+        min_value=0.0,
+        value=0.0,
+        step=100000.0
+    )
+
+st.subheader("📌 Bảo hiểm")
 
 col3, col4, col5 = st.columns(3)
 
@@ -93,72 +91,82 @@ with col5:
         value=0.0
     )
 
-st.header("Giảm trừ")
+st.subheader("📌 Giảm trừ")
 
-so_nguoi_phu_thuoc = st.number_input(
+so_npt = st.number_input(
     "Số người phụ thuộc",
     min_value=0,
+    value=0,
     step=1
 )
 
 tu_thien = st.number_input(
-    "Khoản từ thiện / khuyến học",
+    "Khoản từ thiện được khấu trừ",
     min_value=0.0,
     value=0.0
 )
 
-# ======================
+# =========================
 # NÚT TÍNH
-# ======================
-
+# =========================
 if st.button("📊 TÍNH THUẾ"):
 
-    thu_nhap_chiu_thue_tam = (
-        luong_co_ban
+    # Thu nhập trước tiền thuê nhà
+    thu_nhap_tam = (
+        luong
         + thuong
-        + phu_cap_chuc_vu
-        + phu_cap_trach_nhiem
-        + phu_cap_dien_thoai
-        + phu_cap_xang_xe
+        + phu_cap
+        - thu_nhap_mien_thue
     )
 
-    gioi_han_thue_nha = thu_nhap_chiu_thue_tam * 0.15
+    # Giới hạn tiền thuê nhà 15%
+    gioi_han_nha = thu_nhap_tam * 0.15
 
-    tien_thue_nha_chiu_thue = min(
+    tien_nha_tinh_thue = min(
         tien_thue_nha,
-        gioi_han_thue_nha
+        gioi_han_nha
     )
 
+    # Thu nhập chịu thuế
     thu_nhap_chiu_thue = (
-        thu_nhap_chiu_thue_tam
-        + tien_thue_nha_chiu_thue
+        thu_nhap_tam
+        + tien_nha_tinh_thue
     )
 
-    tong_bao_hiem = bhxh + bhyt + bhtn
+    # Bảo hiểm
+    tong_bao_hiem = (
+        bhxh
+        + bhyt
+        + bhtn
+    )
 
-    giam_tru_gia_canh = (
+    # Giảm trừ gia cảnh
+    giam_tru = (
         GIAM_TRU_BAN_THAN
-        + so_nguoi_phu_thuoc * GIAM_TRU_NGUOI_PHU_THUOC
+        + so_npt * GIAM_TRU_NPT
     )
 
+    # Thu nhập tính thuế
     thu_nhap_tinh_thue = (
         thu_nhap_chiu_thue
         - tong_bao_hiem
-        - giam_tru_gia_canh
+        - giam_tru
         - tu_thien
     )
 
     if thu_nhap_tinh_thue <= 0:
+
         st.success("Không phát sinh thuế TNCN")
+
     else:
 
         bac_thue = [
-            (5_000_000, 0.05),
-            (10_000_000, 0.10),
-            (18_000_000, 0.15),
-            (32_000_000, 0.20),
-            (52_000_000, 0.25),
-            (80_000_000, 0.30),
+            (5000000, 0.05),
+            (10000000, 0.10),
+            (18000000, 0.15),
+            (32000000, 0.20),
+            (52000000, 0.25),
+            (80000000, 0.30),
             (float("inf"), 0.35)
         ]
 
@@ -181,13 +189,13 @@ if st.button("📊 TÍNH THUẾ"):
             con_lai -= muc
             moc_duoi = gioi_han
 
-        thuc_nhan = (
+        luong_thuc_nhan = (
             thu_nhap_chiu_thue
             - tong_bao_hiem
             - thue
         )
 
-        st.subheader("📋 Kết quả")
+        st.subheader("📋 KẾT QUẢ")
 
         st.metric(
             "Thu nhập chịu thuế",
@@ -206,6 +214,11 @@ if st.button("📊 TÍNH THUẾ"):
 
         st.metric(
             "Lương thực nhận",
-            f"{thuc_nhan:,.0f} VNĐ"
+            f"{luong_thuc_nhan:,.0f} VNĐ"
+        )
+
+        st.info(
+            f"Giảm trừ bản thân: {GIAM_TRU_BAN_THAN:,.0f} VNĐ | "
+            f"Người phụ thuộc: {so_npt} người"
         )
 ```
